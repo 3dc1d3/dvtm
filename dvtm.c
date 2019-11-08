@@ -52,6 +52,8 @@ typedef struct {
 	int history;
 	int w;
 	int h;
+	bool modded;
+	int mod;
 	volatile sig_atomic_t need_resize;
 } Screen;
 
@@ -233,7 +235,7 @@ static char *title;
 
 /* global variables */
 static const char *dvtm_name = "dvtm";
-Screen screen = { .mfact = MFACT, .nmaster = NMASTER, .history = SCROLL_HISTORY };
+Screen screen = { .mfact = MFACT, .nmaster = NMASTER, .history = SCROLL_HISTORY, .modded = false, .mod = MOD, };
 static Client *stack = NULL;
 static Client *sel = NULL;
 static Client *lastsel = NULL;
@@ -1776,6 +1778,7 @@ parse_args(int argc, char *argv[]) {
 				for (unsigned int b = 0; b < LENGTH(bindings); b++)
 					if (bindings[b].keys[0] == MOD)
 						bindings[b].keys[0] = *mod;
+				screen.mod = *mod;
 				break;
 			}
 			case 'd':
@@ -1878,7 +1881,16 @@ main(int argc, char *argv[]) {
 
 		if (FD_ISSET(STDIN_FILENO, &rd)) {
 			int code = getch();
-			if (code >= 0) {
+			if (screen.modded && key_index == 0 && code == screen.mod) {
+				screen.modded = false;
+				keypress(code);
+			} else if (code >= 0) {
+				if (!screen.modded && key_index == 0 && code == screen.mod) {
+					screen.modded = true;
+				} else if (screen.modded && key_index == 0) {
+					keys[key_index++] = screen.mod;
+				}
+
 				keys[key_index++] = code;
 				KeyBinding *binding = NULL;
 				if (code == KEY_MOUSE) {
